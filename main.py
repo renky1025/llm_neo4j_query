@@ -87,25 +87,29 @@ def extract_json_from_string(s):
     return cleaned_string
     
 def extract_information(text):
-    completion = client.chat.completions.create(
-        stream=False,
-        model="mistral-small3.1:latest",
-        temperature=0.1,
-        messages=[
-        {
-            "role": "system",
-            "content": system_prompt
-        },
-        {
-            "role": "user",
-            "content": text
-        }
-        ]
-    )
-    if completion.choices[0].message.content:
-        response_text = completion.choices[0].message.content
-        return extract_json_from_string(response_text)
-    else:
+    try:
+        completion = client.chat.completions.create(
+                stream=False,
+                model="mistral-small3.1:latest",
+                temperature=0.1,
+                messages=[
+                {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": text
+            }
+            ]
+        )
+        if completion.choices[0].message.content:
+            response_text = completion.choices[0].message.content
+            return extract_json_from_string(response_text)
+        else:
+            return None
+    except Exception as e:
+        print(f"提取信息时出错: {e}")
         return None
 
 
@@ -127,17 +131,19 @@ def extract_entities_relations_with_llm(text_input):
     #: K8S的核心功能是什么 --> K8S 核心功能 
     try:
         response_text = extract_information(text_input)
-        # 解析 JSON 字符串
-        extracted_triples = json.loads(response_text)
-        return extracted_triples
+        if response_text:
+            # 解析 JSON 字符串
+            extracted_triples = json.loads(response_text)
+            return extracted_triples
+        else:
+            return None
     except json.JSONDecodeError:
         print("错误: LLM 未返回有效的 JSON 格式。")
-        return []
+        return None
 
 import thulac
 import spacy
 
-from typing import List
 import langdetect  # 用于语言识别
 # 初始化分词器
 thu = thulac.thulac(seg_only=True)
@@ -411,10 +417,10 @@ if __name__ == "__main__":
     for i, sentence in enumerate(sentences):
         print(f"Sentence {i+1}: {sentence}")
         triples1 = extract_entities_relations_with_llm(sentence)
-        print(triples1)
-        print("--------------------------------")
-        save_to_neo4j(triples1)
-    
+        if triples1:
+            all_triples.append(triples1)
+        else:
+            print(f"提取三元组时出错: {sentence}")
     # 导出到JSON文件
     # 生成带时间戳的文件名
     output_dir = "output"
