@@ -1,0 +1,304 @@
+一、K8s是什么？
+K8S官网文档：kubernetes.io/zh/docs/hom…
+K8S 是Kubernetes的全称，源于希腊语，意为“舵手”或“飞行员”，官方称其是：用于自动部署、扩展和管理“容器化（containerized）应用程序”的开源系统。
+翻译成大白话就是：“K8S 是负责自动化运维管理多个跨机器 Docker 程序的集群”。
+二、K8s能干什么？
+1、服务发现与负载均衡：无需修改你的应用程序即可使用陌生的服务发现机制。 存储编排：自动挂载所选存储系统，包括本地存储。
+2、Secret和配置管理：部署更新Secrets和应用程序的配置时不必重新构建容器镜像，且不必将软件堆栈配置中的秘密信息暴露出来。
+3、批量执行：除了服务之外，Kubernetes还可以管理你的批处理和CI工作负载，在期望时替换掉失效的容器。
+4、水平扩缩容：使用一个简单的命令、一个UI或基于CPU使用情况自动对应用程序进行扩缩。 自动化上线和回滚：Kubernetes会分步骤地将针对应用或其配置的更改上线，同时监视应用程序运行状况以确保你不会同时终止所有实例。
+5、自动装箱：根据资源需求和其他约束自动放置容器，同时避免影响可用性。
+6、自我修复：重新启动失败的容器，在节点死亡时替换并重新调度容器，杀死不响应用户定义的健康检查的容器。
+最近无意间获得一份阿里大佬写的刷题笔记，一下子打通了我的任督二脉，进大厂原来没那么难。这是大佬写的， 7701页的BAT大佬写的刷题笔记，让我offer拿到手软
+三、K8s的核心架构
+我们已经知道了 K8S 的核心功能：
+自动化运维管理多个容器化程序。
+那么 K8S 怎么做到的呢？
+这里，我们从宏观架构上来学习 K8S 的设计思想。
+首先看下图：  K8S 是属于主从设备模型（Master-Slave 架构），即有 Master 节点负责核心的调度、管理和运维，Slave 节点则执行用户的程序。
+但是在 K8S 中，主节点一般被称为Master Node 或者 Head Node，而从节点则被称为Worker Node 或者 Node。
+注意：Master Node 和 Worker Node 是分别安装了 K8S 的 Master 和 Woker 组件的实体服务器，每个 Node 都对应了一台实体服务器
+四、K8s的核心组件
+从上面的核心架构图中，我们可以看到K8s有7个核心组件，其中Master Node有4个，Worker Node有3个
+ 
+理解了上面几个组件的意思后，那么当我们用K8s部署的过程中，K8s的内部各组件是如何协同工作的呢？
+比如我们在master节点执行一条命令要部署一个nginx应用
+bash
+ 代码解读
+复制代码
+kubectl create deployment nginx --image=nginx
+1、这条命令首先发到master节点的网关api server，这是matser的唯一入口
+2、api server将命令请求交给controller mannager进行控制
+3、controller mannager 进行应用部署解析
+4、controller mannager 会生成一次部署信息，并通过api server将信息存入etcd存储中
+5、scheduler调度器通过api server从etcd存储中，拿到要部署的应用，开始调度看哪个节点有资源适合部署
+6、scheduler把计算出来的调度信息通过api server再放到etcd中
+7、每一个node节点的监控组件kubelet，随时和master保持联系（给api-server发送请求不断获取最新数据），拿到master节点存储在etcd中的部署信息
+9、假设node2的kubelet拿到部署信息，显示他自己节点要部署某某应用 10、kubelet就自己run一个应用在当前机器上，并随时给master汇报当前应用的状态信息 11、node和master也是通过master的api-server组件联系的
+12、每一个机器上的kube-proxy能知道集群的所有网络，只要node访问别人或者别人访问node，node上的kube-proxy网络代理自动计算进行流量转发
+学习了上面有关K8s的基础入门知识，那么我们再来看看下面这5个问题，你能答出来几个？
+插播一条：如果你近期准备面试跳槽，建议在cxykk.com在线刷题，涵盖 1万+ 道 Java 面试题，几乎覆盖了所有主流技术面试题、简历模板、算法刷题，全部免费。
+问题一：k8s中的pod是什么？解决了什么问题？
+在Kubernetes（K8s）中，Pod 是最小的可部署计算单元
+一个 Pod 表示 Kubernetes 中运行的一个进程，是部署应用程序或服务的基本单位。它可以包含一个或多个容器，这些容器共享相同的网络命名空间、存储卷和配置。
+Pod 解决的问题
+1.资源管理与隔离：
+Pod 通过资源请求和限制（如 CPU 和内存）来管理和隔离资源，从而保证不同应用程序的稳定性和性能。
+多容器协作：
+在某些应用场景中，需要多个容器协作来完成任务。Pod 允许将这些紧密耦合的容器打包在一起，它们共享相同的网络和存储资源，便于相互通信和数据交换。
+调度与负载均衡：
+Kubernetes 通过调度器将 Pod 安排到合适的节点上，并根据资源使用情况进行负载均衡，从而提高集群资源的利用率和应用的可用性。
+服务发现与通信：
+每个 Pod 都有一个唯一的 IP 地址，Kubernetes 提供了一套服务发现机制，使 Pod 之间以及 Pod 与外部世界之间的通信变得简单而高效。
+生命周期管理：
+Kubernetes 提供了 Pod 的生命周期管理，包括创建、删除、重启和滚动更新等，从而简化了应用的部署和维护工作。
+高可用性与自愈能力：
+Kubernetes 能够监控 Pod 的状态，当某个 Pod 出现故障时，会自动重新调度新的 Pod 以保证应用的高可用性。
+通过 Pod，Kubernetes 实现了对容器化应用的高效管理、部署和扩展，使得复杂的分布式系统能够更加简洁、灵活和可维护。
+问题二：Deployment和Statefulset有什么区别？
+在 Kubernetes 中，Deployment 和 StatefulSet 都是用于管理 Pod 的控制器，但它们的使用场景和特性有所不同。以下是它们的主要区别：
+Deployment
+用途：
+适用于无状态应用（stateless applications），即应用的每个实例都是独立的，不需要保持状态。
+常用于管理 Web 服务器、API 服务器等。
+特性：
+Pod 之间没有顺序：所有 Pod 是相同的，启动和停止的顺序无关紧要。
+Pod 名称是随机的：Pod 的名称由 Kubernetes 随机生成。
+Pod 替换：在滚动更新或回滚时，会创建新 Pod 替换旧 Pod，保证服务的无缝升级。
+负载均衡：自动实现负载均衡，通过 Service 实现流量分发。
+应用场景：
+无状态服务，如前端应用、REST API 服务等。 需要频繁更新或扩展的服务。
+StatefulSet
+用途：
+适用于有状态应用（stateful applications），即每个实例需要保持状态，且状态在 Pod 重启或迁移时需要保留。
+常用于管理数据库、分布式系统等。
+特性：
+Pod 顺序启动和停止：Pod 按照严格的顺序启动和停止，保证某些依赖关系和初始化顺序。
+稳定的网络标识：每个 Pod 都有一个稳定的网络标识（Pod 名称），例如 mypod-0、mypod-1。
+持久存储：每个 Pod 都有一个与其绑定的持久存储卷，这些存储卷在 Pod 重启或迁移时会保留数据。
+有序滚动更新：按顺序进行滚动更新，确保每个实例在更新过程中保持状态一致性。
+应用场景：
+有状态服务，如数据库（MySQL、PostgreSQL）、分布式缓存（Redis）、ZooKeeper 等。 需要持久存储和稳定网络标识的应用。
+总结
+Deployment：用于无状态应用，关注快速和灵活的部署与扩展，Pod 名称随机且无需持久存储。 StatefulSet：用于有状态应用，确保 Pod 的顺序启动、稳定网络标识和持久存储，适用于需要持久化数据和有状态的场景。
+通过选择适合的控制器，可以更好地管理和部署不同类型的应用，从而提高系统的可靠性和可维护性。
+最近无意间获得一份阿里大佬写的刷题笔记，一下子打通了我的任督二脉，进大厂原来没那么难。这是大佬写的， 7701页的BAT大佬写的刷题笔记，让我offer拿到手软
+问题三：Service是什么？具体怎么实现的？
+在 Kubernetes 中，Service 是一种资源对象，用于定义和管理一组 Pod 的网络访问策略。
+Service 提供了一种抽象层，将一组功能相同的 Pod 作为一个单一的服务进行暴露，并自动实现负载均衡和服务发现。Service 的主要作用是确保应用可以通过一个稳定的 IP 地址和端口访问到相应的 Pod，而不需要关心 Pod 的动态变化（如重启、缩放等）。
+ 
+Service 的类型
+Kubernetes 中的 Service 主要有以下几种类型：
+ClusterIP：
+默认类型。分配一个集群内部的虚拟 IP 地址，只有集群内部的 Pod 能够访问。 用于集群内部服务间的通信。
+NodePort：
+在每个节点上打开一个静态端口（30000-32767 范围内），通过这个端口可以从外部访问服务。 NodePort Service 会自动创建一个 ClusterIP Service。
+LoadBalancer：
+在外部负载均衡器（如云提供商的负载均衡器）上配置一个 IP 地址，将流量转发到 NodePort 或 ClusterIP。
+适用于需要从外部访问的服务。
+ExternalName：
+将 Service 的名称映射到一个外部的 DNS 名称，通过 DNS 解析来访问外部服务。
+Service 的实现
+Service 的实现主要依赖于以下几个关键组件和机制：
+选择器（Selector）：
+使用标签选择器（Label Selector）来匹配一组 Pod，通过这些标签来确定哪些 Pod 属于这个 Service。
+端点（Endpoints）：
+Kubernetes 会自动创建一个 Endpoints 对象，记录匹配到的 Pod 的 IP 地址和端口信息。 当 Pod 的数量或 IP 发生变化时，Endpoints 对象会自动更新。
+代理（kube-proxy）：
+在每个节点上运行的 kube-proxy 组件负责处理 Service 的网络流量。 kube-proxy 维护一张映射表，将 Service 的虚拟 IP 和端口映射到相应的 Pod。
+示例
+以下是一个定义 ClusterIP 类型 Service 的示例：
+yaml
+ 代码解读
+复制代码
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+在这个示例中：
+metadata.name 定义了 Service 的名称。
+spec.selector 指定了匹配的 Pod 的标签（app: MyApp）。
+spec.ports 定义了 Service 暴露的端口（80）以及目标 Pod 的端口（8080）。
+工作流程
+Pod 创建与标签：
+创建具有特定标签的 Pod，例如 app: MyApp。
+Service 创建：
+根据上面的示例 YAML 文件创建一个 Service 对象。
+Endpoints 创建：
+Kubernetes 根据 Service 的 selector 自动创建并更新 Endpoints 对象，记录匹配的 Pod 的 IP 和端口。
+流量转发： 当请求到达 Service 的 ClusterIP 时，kube-proxy 负责将流量转发到 Endpoints 对象中记录的 Pod。
+负载均衡： kube-proxy 实现了简单的负载均衡，将请求分发到不同的 Pod，从而实现服务的高可用性和扩展性。
+通过 Service，Kubernetes 能够提供灵活、高效的服务发现和负载均衡机制，使得微服务架构的部署和管理更加简单和可靠。
+问题四：PVC和PV是什么？解决了什么问题？
+在 Kubernetes 中，PersistentVolume (PV) 和 PersistentVolumeClaim (PVC) 是用于管理持久存储的两个重要概念。它们的引入解决了容器存储的持久化问题，确保即使 Pod 被删除或重新调度，存储的数据也能够保留和恢复。
+PersistentVolume (PV)
+PersistentVolume 是由管理员配置的存储资源，它是一块独立于 Pod 生命周期的持久化存储。PV 类似于集群中的存储卷，具有独立的生命周期，由管理员事先配置和管理。
+PV 的特性
+独立于 Pod 生命周期：PV 的生命周期独立于任何特定的 Pod，当 Pod 被删除或重新调度时，PV 中的数据仍然保留。
+存储抽象层：PV 抽象了底层存储的细节，可以是本地磁盘、NFS、iSCSI、云存储（如 AWS EBS、GCE PD）等。
+配置和管理：管理员通过 YAML 文件配置 PV，并定义存储类型、大小、访问模式等参数。 PV 示例
+yaml
+ 代码解读
+复制代码
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data
+在这个示例中：
+metadata.name 指定 PV 的名称。
+spec.capacity 定义存储容量。
+spec.accessModes 指定访问模式，如 ReadWriteOnce（单节点读写）。
+spec.persistentVolumeReclaimPolicy 指定回收策略，如 Retain（保留）。
+spec.hostPath.path 指定存储路径。
+PersistentVolumeClaim (PVC)
+PersistentVolumeClaim 是用户对存储资源的请求，类似于 Pod 请求计算资源（CPU、内存）
+PVC 描述了用户需要的存储需求，包括容量、访问模式等。PVC 由用户创建并绑定到合适的 PV，从而获得持久存储。
+PVC 的特性
+按需请求：用户通过 PVC 请求存储资源，而无需关心底层的存储实现。
+自动绑定：Kubernetes 自动将 PVC 绑定到满足需求的 PV。
+资源隔离：PVC 确保了存储资源的隔离和独占使用，满足不同应用的存储需求。
+PVC 示例
+yaml
+ 代码解读
+复制代码
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+在这个示例中：
+metadata.name 指定 PVC 的名称。
+spec.accessModes 指定访问模式。
+spec.resources.requests.storage 定义请求的存储容量。
+工作流程 管理员创建 PV：
+管理员根据集群的存储资源创建 PV，定义存储类型、容量、访问模式等。
+用户创建 PVC：
+用户根据应用需求创建 PVC，指定所需存储的容量和访问模式。
+自动绑定：
+Kubernetes 控制器监视 PVC 和 PV，自动将满足要求的 PV 绑定到 PVC。 Pod 使用 PVC：
+用户在 Pod 的配置文件中引用 PVC，Pod 启动时，Kubernetes 自动将 PVC 挂载到 Pod 中，供应用使用。
+Pod 使用 PVC 示例
+yaml
+ 代码解读
+复制代码
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: my-container
+      image: nginx
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: my-storage
+  volumes:
+    - name: my-storage
+      persistentVolumeClaim:
+        claimName: my-pvc
+在这个示例中：
+spec.containers.volumeMounts 指定容器挂载路径和卷名称。
+spec.volumes.persistentVolumeClaim.claimName 引用 PVC 名称。
+通过 PV 和 PVC，Kubernetes 实现了持久化存储的灵活管理，使得应用可以方便地请求、使用和管理持久存储资源，从而解决了容器存储持久化的问题。
+最近无意间获得一份阿里大佬写的刷题笔记，一下子打通了我的任督二脉，进大厂原来没那么难。这是大佬写的， 7701页的BAT大佬写的刷题笔记，让我offer拿到手软
+问题五：网络插件解决了什么问题？具体怎么实现的？
+在 Kubernetes 中，网络插件（Network Plugin）解决了集群中 Pod 之间的网络连接、服务发现、负载均衡等网络相关问题。Kubernetes 默认没有内置的网络解决方案，而是通过可插拔的网络插件机制，允许用户选择和配置不同的网络方案来满足特定需求。
+网络插件解决的问题
+Pod 网络连通性：
+确保集群中所有 Pod 之间能够相互通信，无论它们运行在哪个节点上。 每个 Pod 都需要有一个独立的 IP 地址，且这些 IP 地址在整个集群内是唯一的。
+服务发现与负载均衡：
+支持 Kubernetes 的 Service 资源，实现集群内部和外部的服务发现与负载均衡。 提供稳定的服务 IP 地址和 DNS 名称，方便应用程序访问。
+网络策略：
+实现网络隔离和安全策略，控制哪些 Pod 能够相互通信。 支持基于标签和命名空间的网络策略，以增强安全性。 扩展性与插件化：
+提供灵活的网络架构，支持多种网络插件，以满足不同的网络需求和环境。 支持不同的底层网络技术，如 VXLAN、IPsec、Overlay 网络等。
+网络插件的实现
+Kubernetes 使用容器网络接口（Container Network Interface, CNI）规范来实现网络插件。CNI 是一种规范，定义了容器运行时如何配置网络，以及如何在容器删除时清理网络。
+Kubernetes 支持多种 CNI 插件，包括 Flannel、Calico、Weave、Cilium 等。
+示例：使用 Flannel 作为网络插件
+Flannel 是一个简单且易于配置的网络插件，常用于 Kubernetes 的网络解决方案。以下是使用 Flannel 作为网络插件的基本步骤：
+部署 Flannel：
+首先，确保你的 Kubernetes 集群已经启动并运行。然后，通过以下命令部署 Flannel：
+bash
+ 代码解读
+复制代码
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+这个命令会从官方的 Flannel 仓库下载并应用 Flannel 的配置文件。
+Flannel 配置文件：
+kube-flannel.yml 文件定义了 Flannel 的 DaemonSet、ConfigMap 和其他必要的资源。以下是配置文件中的一些关键部分：
+yaml
+ 代码解读
+复制代码
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: psp.flannel.unprivileged
+spec:
+  privileged: false
+  volumes:
+    - configMap
+    - secret
+    - emptyDir
+    - hostPath
+  allowedHostPaths:
+    - pathPrefix: "/etc/cni/net.d"
+    - pathPrefix: "/etc/kube-flannel"
+    - pathPrefix: "/run/flannel"
+  ...
+这个配置文件定义了 Flannel 使用的 Pod 安全策略、CNI 配置文件路径等。
+验证部署：
+部署完成后，可以通过以下命令验证 Flannel 是否正确运行：
+bash
+ 代码解读
+复制代码
+kubectl get pods -n kube-system
+确认 kube-flannel-ds DaemonSet 中的 Pod 都在 Running 状态。
+配置网络策略：
+一旦 Flannel 部署完成，你可以开始定义和应用网络策略，以控制 Pod 之间的网络通信。
+例如，以下是一个简单的网络策略，允许带有特定标签的 Pod 之间的通信：
+yaml
+ 代码解读
+复制代码
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-app-traffic
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: myapp
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: myapp
+其他常见网络插件
+除了 Flannel，以下是一些其他常见的 Kubernetes 网络插件：
+Calico：提供网络和网络安全功能，支持网络策略和 BGP 路由。
+Weave：简单易用，支持自动发现和网络加密。 Cilium：基于 eBPF 技术，提供高级网络安全功能和可观测性。
+Multus：支持多网络接口，适用于需要多个网络的复杂场景。
+每种网络插件都有其独特的特性和适用场景，用户可以根据需求选择合适的插件来配置和管理 Kubernetes 集群的网络。
+说在最后：K8S真的放弃Docker了吗？
+Docker作为非常流行的容器技术，之前经常有文章说它被K8S弃用了，取而代之的是另一种容器技术containerd！
+其实containerd只是从Docker中分离出来的底层容器运行时，使用起来和Docker并没有啥区别，从Docker转型containerd非常简单，基本没有什么门槛。只要把之前Docker命令中的docker改为crictl基本就可以了，都是同一个公司出品的东西，用法都一样。所以不管K8S到底弃用不弃用Docker，对我们开发者使用来说，基本没啥影响！
+
