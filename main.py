@@ -1,9 +1,11 @@
 import json
 from openai import OpenAI
 import re
+import os
+from datetime import datetime
 
-client = OpenAI(api_key="sk-proj-00000000000000000000000000000000", 
-                timeout=30,
+client = OpenAI(api_key="sk-pro", 
+                timeout=60,
                 #model="mistral-small3.1:latest",
                 base_url="http://10.100.1.1:11434/v1") 
 system_prompt = """
@@ -87,7 +89,7 @@ def extract_json_from_string(s):
 def extract_information(text):
     completion = client.chat.completions.create(
         stream=False,
-        model="qwen2.5:14b",
+        model="mistral-small3.1:latest",
         temperature=0.1,
         messages=[
         {
@@ -273,7 +275,7 @@ def split_english(segment):
 
 #创建图数据库保存数据{'subject': '某个指标', 'predicate': '调整', 'object': '迭代'}
 from py2neo import Graph, Node, Relationship
-graph = Graph("bolt://10.100.2.1:7687", auth=("neo4j", "admin_pwd"))
+graph = Graph("bolt://10.100.2.1:7687", auth=("xxx", "xx"))
 
 def get_entity_name_by_id(id, triples):
     for entity in triples['entities']:
@@ -399,40 +401,39 @@ def load_text_from_file(file_path):
 
 # --- 使用示例 ---
 if __name__ == "__main__":
-    # # 创建命令行参数解析器
-   
-    # text = load_text_from_file(r"C:\workspaces\python-projects\ai-kg-test\k8s-info.txt")
+    text = load_text_from_file(r"C:\workspaces\python-projects\ai-kg-test\k8s-info.txt")
     
-    # max_len = 128
-    # overlap_size = 64
-    # sentences = split_text(text, max_len, overlap_size)
-    # all_triples = []
+    max_len = 128
+    overlap_size = 64
+    sentences = split_text(text, max_len, overlap_size)
+    all_triples = []
     
-    # for i, sentence in enumerate(sentences):
-    #     print(f"Sentence {i+1}: {sentence}")
-    #     triples1 = extract_entities_relations_with_llm(sentence)
-    #     print(triples1)
-    #     print("--------------------------------")
-    #     save_to_neo4j(triples1)
+    for i, sentence in enumerate(sentences):
+        print(f"Sentence {i+1}: {sentence}")
+        triples1 = extract_entities_relations_with_llm(sentence)
+        print(triples1)
+        print("--------------------------------")
+        save_to_neo4j(triples1)
     
-    # # 导出到JSON文件
-    # # 生成带时间戳的文件名
-    # output_dir = "output"
-    # if not os.path.exists(output_dir):
-    #     os.makedirs(output_dir)
-    # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # output_file = os.path.join(output_dir, f"kg_triples_{timestamp}.json")
+    # 导出到JSON文件
+    # 生成带时间戳的文件名
+    output_dir = "output"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = os.path.join(output_dir, f"kg_triples_{timestamp}.json")
  
-    # # 写入JSON文件
-    # try:
-    #     with open(output_file, "w", encoding="utf-8") as f:
-    #         json.dump(all_triples, f, ensure_ascii=False, indent=2)
-    #     print(f"\n已将三元组导出至: {output_file}")
-    # except Exception as e:
-    #     print(f"导出JSON文件时出错: {e}")
-    data = query_from_neo4j("Deployment和Statefulset有什么区别")
-    sentences = [create_sentence_generic(entry) for entry in data]
+    # 写入JSON文件
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(all_triples, f, ensure_ascii=False, indent=2)
+        print(f"\n已将三元组导出至: {output_file}")
+    except Exception as e:
+        print(f"导出JSON文件时出错: {e}")
+    # 查询
+    # data = query_from_neo4j("Deployment和Statefulset有什么区别")
+    # sentences = [create_sentence_generic(entry) for entry in data]
 
-    # 打印生成的句子
-    for sentence in sentences:
-        print(sentence)
+    # # 打印生成的句子
+    # for sentence in sentences:
+    #     print(sentence)
